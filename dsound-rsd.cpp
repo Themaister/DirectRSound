@@ -1,16 +1,24 @@
 #include "dsound-rsd.hpp"
+#include "dsound-buffer.hpp"
 
 // :D
 const GUID DSOUND_RSOUND_GUID = { 1, 2, 3, { 4, 5, 6, 7, 8, 9, 10, 11 } };
+
+RSoundDS::RSoundDS() : refcnt(0)
+{}
 
 HRESULT __stdcall RSoundDS::Compact()
 {
    return DS_OK;
 }
 
-HRESULT __stdcall RSoundDS::CreateSoundBuffer(LPCDSBUFFERDESC, LPDIRECTSOUNDBUFFER *, LPUNKNOWN)
+HRESULT __stdcall RSoundDS::CreateSoundBuffer(LPCDSBUFFERDESC desc, LPDIRECTSOUNDBUFFER *buffer, LPUNKNOWN)
 {
-   return DSERR_UNSUPPORTED;
+   RSoundDSBuffer *buf = new RSoundDSBuffer(desc);
+   buf->AddRef();
+   *buffer = buf;
+
+   return DS_OK;
 }
 
 HRESULT __stdcall RSoundDS::DuplicateSoundBuffer(LPDIRECTSOUNDBUFFER, LPDIRECTSOUNDBUFFER *)
@@ -18,7 +26,7 @@ HRESULT __stdcall RSoundDS::DuplicateSoundBuffer(LPDIRECTSOUNDBUFFER, LPDIRECTSO
    return DSERR_UNSUPPORTED;
 }
 
-HRESULT __stdcall RSoundDS::GetCaps(LPDSCAPS)
+HRESULT __stdcall RSoundDS::GetCaps(LPDSCAPS caps)
 {
    return DSERR_UNSUPPORTED;
 }
@@ -30,7 +38,6 @@ HRESULT __stdcall RSoundDS::GetSpeakerConfig(LPDWORD)
 
 HRESULT __stdcall RSoundDS::Initialize(LPCGUID)
 {
-   refcnt = 0;
    return DS_OK;
 }
 

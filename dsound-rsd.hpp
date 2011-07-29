@@ -3,14 +3,10 @@
 
 #include <dsound.h>
 
-class RSoundDSCommon
-{
-   public:
-};
-
 class RSoundDS : public IDirectSound8
 {
    public:
+      RSoundDS();
       HRESULT __stdcall Compact();
       HRESULT __stdcall CreateSoundBuffer(LPCDSBUFFERDESC, LPDIRECTSOUNDBUFFER *, LPUNKNOWN);
       HRESULT __stdcall DuplicateSoundBuffer(LPDIRECTSOUNDBUFFER, LPDIRECTSOUNDBUFFER *);

@@ -5,7 +5,7 @@ OBJS := $(SRCS:.cpp=.o)
 
 all: $(TARGET)
 
-LIBS := -ldxguid -static-libstdc++ -static-libgcc
+LIBS := -ldxguid -static-libstdc++ -static-libgcc -lrsound -L.
 
 CXXFLAGS += -O3 -g -I. -Wall -ansi -pedantic
 
