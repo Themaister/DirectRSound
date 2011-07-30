@@ -10,7 +10,6 @@ class RSoundDSBuffer : public IDirectSoundBuffer
 {
    public:
       RSoundDSBuffer(LPCDSBUFFERDESC);
-      ~RSoundDSBuffer();
 
       ULONG __stdcall AddRef();
       HRESULT __stdcall QueryInterface(REFIID, void**);
@@ -56,6 +55,8 @@ class RSoundDSBuffer : public IDirectSoundBuffer
       WAVEFORMATEXTENSIBLE wfx;
 
       void set_desc(LPCDSBUFFERDESC desc);
+      void destruct();
+      unsigned ring_distance(unsigned read_ptr, unsigned write_ptr, unsigned ring_size);
 };
 
 #endif
