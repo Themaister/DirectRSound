@@ -92,6 +92,9 @@ void RSoundDSBuffer::set_desc(LPCDSBUFFERDESC desc)
 void RSoundDSBuffer::destruct()
 {
    Log("RSoundDSBuffer::destruct");
+   if (is_primary)
+      return;
+
    if (rd)
    {
       rsd_stop(rd);

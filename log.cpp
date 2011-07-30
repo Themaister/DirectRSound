@@ -26,6 +26,7 @@ namespace Logging
       va_end(ap);
 
       fprintf(target, "[DirectRSound]: %s\n", buf);
+      fflush(target);
    }
 
    void Init()
