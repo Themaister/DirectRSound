@@ -97,7 +97,7 @@ dllexport HRESULT WINAPI DirectSoundCaptureEnumerateW(
    return DSERR_INVALIDPARAM;
 }
 
-#ifdef __GNUC__
+#if defined(__GNUC__) && defined(EXPORT_CLEAN_SYMBOLS)
 
 // MinGW seems to be unable to export __stdcall (WINAPI) functions since their
 // signature is rather different, so we create some proxy calls and export these instead.

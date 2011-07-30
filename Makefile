@@ -8,7 +8,7 @@ all: $(TARGET)
 
 LIBS := -ldxguid -static-libstdc++ -static-libgcc -lrsound -L.
 
-CXXFLAGS += -O3 -g -I. -Wall -ansi -pedantic
+CXXFLAGS += -O3 -g -I. -Wall -ansi -pedantic -DEXPORT_CLEAN_SYMBOLS
 
 CXX = g++
 
