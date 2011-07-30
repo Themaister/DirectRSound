@@ -162,13 +162,13 @@ HRESULT __stdcall RSoundDSBuffer::SetFrequency(DWORD freq)
 HRESULT __stdcall RSoundDSBuffer::SetPan(LONG)
 {
    Log("RSoundDSBuffer::SetPan");
-   return DSERR_CONTROLUNAVAIL;
+   return DS_OK;
 }
 
 HRESULT __stdcall RSoundDSBuffer::SetVolume(LONG)
 {
    Log("RSoundDSBuffer::SetVolume");
-   return DSERR_CONTROLUNAVAIL;
+   return DS_OK;
 }
 
 HRESULT __stdcall RSoundDSBuffer::GetCaps(LPDSBCAPS caps)
