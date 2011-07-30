@@ -1,8 +1,6 @@
 #include <dsound.h>
 #include "dsound-rsd.hpp"
 
-#include <iostream>
-
 #define dllexport __declspec(dllexport)
 
 #if DIRECTSOUND_VERSION >= 0x0800
@@ -10,7 +8,6 @@
 dllexport HRESULT WINAPI DirectSoundCreate8(LPCGUID guid, LPDIRECTSOUND8 *ppDS,
       LPUNKNOWN)
 {
-   std::cerr << "DirectSoundCreate8" << std::endl;
    if (guid && *guid != DSOUND_RSOUND_GUID)
       return DSERR_NODRIVER;
 
@@ -32,20 +29,17 @@ dllexport HRESULT WINAPI DirectSoundFullDuplexCreate(
       LPDIRECTSOUNDBUFFER8 *,
       LPUNKNOWN)
 {
-   std::cerr << "DirectSoundFullDuplexCreate8" << std::endl;
    return DSERR_ALLOCATED;
 }
 
 dllexport HRESULT WINAPI DirectSoundCaptureCreate8(LPCGUID,
       LPDIRECTSOUNDCAPTURE8*, LPUNKNOWN)
 {
-   std::cerr << "DirectSoundCaptureCreate8" << std::endl;
    return DSERR_ALLOCATED;
 }
 
 dllexport HRESULT WINAPI GetDeviceID(LPCGUID pGuidSrc, LPGUID pGuidDest)
 {
-   std::cerr << "GetDeviceID" << std::endl;
    if (*pGuidSrc == DSDEVID_DefaultPlayback)
       *pGuidDest = DSOUND_RSOUND_GUID;
    else if (*pGuidSrc == DSDEVID_DefaultVoicePlayback)
@@ -62,7 +56,6 @@ dllexport HRESULT WINAPI GetDeviceID(LPCGUID pGuidSrc, LPGUID pGuidDest)
 dllexport HRESULT WINAPI DirectSoundCreate(LPCGUID guid, LPDIRECTSOUND *ppDS,
       LPUNKNOWN)
 {
-   std::cerr << "DirectSoundCreate" << std::endl;
    if (guid && *guid != DSOUND_RSOUND_GUID)
       return DSERR_NODRIVER;
 
@@ -74,7 +67,6 @@ dllexport HRESULT WINAPI DirectSoundCreate(LPCGUID guid, LPDIRECTSOUND *ppDS,
 
 dllexport HRESULT WINAPI DirectSoundEnumerateA(LPDSENUMCALLBACKA cb, LPVOID ctx)
 {
-   std::cerr << "DirectSoundEnumerateA" << std::endl;
    if (cb)
       cb(0, "RSound networked audio", "RSound", ctx);
    return DS_OK;
@@ -82,7 +74,6 @@ dllexport HRESULT WINAPI DirectSoundEnumerateA(LPDSENUMCALLBACKA cb, LPVOID ctx)
 
 dllexport HRESULT WINAPI DirectSoundEnumerateW(LPDSENUMCALLBACKW cb, LPVOID ctx)
 {
-   std::cerr << "DirectSoundEnumerateW" << std::endl;
    if (cb)
       cb(0, L"RSound networked audio", L"RSound", ctx);
    return DS_OK;
@@ -91,21 +82,18 @@ dllexport HRESULT WINAPI DirectSoundEnumerateW(LPDSENUMCALLBACKW cb, LPVOID ctx)
 dllexport HRESULT WINAPI DirectSoundCaptureCreate(LPCGUID,
       LPDIRECTSOUNDCAPTURE8*, LPUNKNOWN)
 {
-   std::cerr << "DirectSoundCaptureCreate" << std::endl;
    return DSERR_ALLOCATED;
 }
 
 dllexport HRESULT WINAPI DirectSoundCaptureEnumerateA(
       LPDSENUMCALLBACKA, LPVOID)
 {
-   std::cerr << "DirectSoundCaptureEnumerateA" << std::endl;
    return DSERR_INVALIDPARAM;
 }
 
 dllexport HRESULT WINAPI DirectSoundCaptureEnumerateW(
       LPDSENUMCALLBACKW, LPVOID)
 {
-   std::cerr << "DirectSoundCaptureEnumerateW" << std::endl;
    return DSERR_INVALIDPARAM;
 }
 
