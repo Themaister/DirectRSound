@@ -68,6 +68,16 @@ RSoundDSBuffer::RSoundDSBuffer(LPCDSBUFFERDESC desc) : refcnt(0), is_primary(fal
    set_desc(desc);
 }
 
+unsigned RSoundDSBuffer::find_latency()
+{
+   unsigned latency_ms = 128; // Reasonable default.
+   const char *lat = getenv("RSD_LATENCY");
+   if (lat)
+      latency_ms = strtoul(lat, 0, 0);
+
+   return latency_ms;
+}
+
 void RSoundDSBuffer::set_desc(LPCDSBUFFERDESC desc)
 {
    if (ring.data)
@@ -75,6 +85,8 @@ void RSoundDSBuffer::set_desc(LPCDSBUFFERDESC desc)
 
    ring.data = new uint8_t[desc->dwBufferBytes];
    ring.size = desc->dwBufferBytes;
+   memset(ring.data, 0, ring.size);
+
    ring.ptr = 0;
    ring.write_ptr = desc->dwBufferBytes >> 1;
 
@@ -85,8 +97,29 @@ void RSoundDSBuffer::set_desc(LPCDSBUFFERDESC desc)
    rsd_set_param(rd, RSD_SAMPLERATE, &rate);
    rsd_set_param(rd, RSD_CHANNELS, &channels);
    rsd_set_param(rd, RSD_FORMAT, &format);
-   int latency = 128;
-   rsd_set_param(rd, RSD_LATENCY, &latency);
+   int latency_ms = find_latency();
+   rsd_set_param(rd, RSD_LATENCY, &latency_ms);
+
+   Log("=============================");
+   Log("Buffer info:");
+   Log("\tSamplerate: %d", rate);
+   Log("\tChannels: %d", channels);
+   Log("\tBits: %d", desc->lpwfxFormat->wBitsPerSample);
+   Log("\tBuffer size: %d bytes", desc->dwBufferBytes);
+   Log("=============================");
+
+   latency = (latency_ms * rate * channels * desc->lpwfxFormat->wBitsPerSample) / (8 * 1000);
+
+   // To compensate for added latency in rsound itself we adjust the read pointer to reflect this. Only do this when the total latency is big enough (video playing usually).
+   adjust_latency = 4 * latency < ring.size;
+   Log(adjust_latency ?
+         "Using latency compensation!" :
+         "Not using latency compensation!");
+}
+
+unsigned RSoundDSBuffer::adjusted_latency(unsigned ptr)
+{
+   return (ring.size + ring.ptr - latency) % ring.size;
 }
 
 void RSoundDSBuffer::destruct()
@@ -215,6 +248,7 @@ HRESULT RSoundDSBuffer::SetFormat(LPCWAVEFORMATEX fmt)
 {
    Log("RSoundDSBuffer::SetFormat");
    memcpy(&wfx, fmt, min(fmt->cbSize, sizeof(wfx)));
+   // Should perhaps update settings?
    return DS_OK;
 }
 
@@ -222,7 +256,12 @@ HRESULT RSoundDSBuffer::GetCurrentPosition(LPDWORD play, LPDWORD write)
 {
    EnterCriticalSection(&ring.crit);
    if (play)
-      *play = ring.ptr;
+   {
+      if (adjust_latency)
+         *play = adjusted_latency(ring.ptr);
+      else
+         *play = ring.ptr;
+   }
    if (write)
       *write = ring.write_ptr;
    LeaveCriticalSection(&ring.crit);

@@ -57,6 +57,11 @@ class RSoundDSBuffer : public IDirectSoundBuffer
       void set_desc(LPCDSBUFFERDESC desc);
       void destruct();
       unsigned ring_distance(unsigned read_ptr, unsigned write_ptr, unsigned ring_size);
+
+      bool adjust_latency;
+      unsigned latency;
+      unsigned adjusted_latency(unsigned ptr);
+      static unsigned find_latency();
 };
 
 #endif
