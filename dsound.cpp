@@ -3,9 +3,11 @@
 
 #include <iostream>
 
+#define dllexport __declspec(dllexport)
+
 #if DIRECTSOUND_VERSION >= 0x0800
 
-HRESULT WINAPI DirectSoundCreate8(LPCGUID guid, LPDIRECTSOUND8 *ppDS,
+dllexport HRESULT WINAPI DirectSoundCreate8(LPCGUID guid, LPDIRECTSOUND8 *ppDS,
       LPUNKNOWN)
 {
    std::cerr << "DirectSoundCreate8" << std::endl;
@@ -18,7 +20,7 @@ HRESULT WINAPI DirectSoundCreate8(LPCGUID guid, LPDIRECTSOUND8 *ppDS,
    return DS_OK;
 }
 
-HRESULT WINAPI DirectSoundFullDuplexCreate8(
+dllexport HRESULT WINAPI DirectSoundFullDuplexCreate(
       LPCGUID,
       LPCGUID,
       LPCDSCBUFFERDESC,
@@ -34,14 +36,14 @@ HRESULT WINAPI DirectSoundFullDuplexCreate8(
    return DSERR_ALLOCATED;
 }
 
-HRESULT WINAPI DirectSoundCaptureCreate8(LPCGUID,
+dllexport HRESULT WINAPI DirectSoundCaptureCreate8(LPCGUID,
       LPDIRECTSOUNDCAPTURE8*, LPUNKNOWN)
 {
    std::cerr << "DirectSoundCaptureCreate8" << std::endl;
    return DSERR_ALLOCATED;
 }
 
-HRESULT WINAPI GetDeviceID(LPCGUID pGuidSrc, LPGUID pGuidDest)
+dllexport HRESULT WINAPI GetDeviceID(LPCGUID pGuidSrc, LPGUID pGuidDest)
 {
    std::cerr << "GetDeviceID" << std::endl;
    if (*pGuidSrc == DSDEVID_DefaultPlayback)
@@ -57,7 +59,7 @@ HRESULT WINAPI GetDeviceID(LPCGUID pGuidSrc, LPGUID pGuidDest)
 #endif
 
 
-HRESULT WINAPI DirectSoundCreate(LPCGUID guid, LPDIRECTSOUND *ppDS,
+dllexport HRESULT WINAPI DirectSoundCreate(LPCGUID guid, LPDIRECTSOUND *ppDS,
       LPUNKNOWN)
 {
    std::cerr << "DirectSoundCreate" << std::endl;
@@ -70,7 +72,7 @@ HRESULT WINAPI DirectSoundCreate(LPCGUID guid, LPDIRECTSOUND *ppDS,
    return DS_OK;
 }
 
-HRESULT WINAPI DirectSoundEnumerateA(LPDSENUMCALLBACKA cb, LPVOID ctx)
+dllexport HRESULT WINAPI DirectSoundEnumerateA(LPDSENUMCALLBACKA cb, LPVOID ctx)
 {
    std::cerr << "DirectSoundEnumerateA" << std::endl;
    if (cb)
@@ -78,7 +80,7 @@ HRESULT WINAPI DirectSoundEnumerateA(LPDSENUMCALLBACKA cb, LPVOID ctx)
    return DS_OK;
 }
 
-HRESULT WINAPI DirectSoundEnumerateW(LPDSENUMCALLBACKW cb, LPVOID ctx)
+dllexport HRESULT WINAPI DirectSoundEnumerateW(LPDSENUMCALLBACKW cb, LPVOID ctx)
 {
    std::cerr << "DirectSoundEnumerateW" << std::endl;
    if (cb)
@@ -86,24 +88,54 @@ HRESULT WINAPI DirectSoundEnumerateW(LPDSENUMCALLBACKW cb, LPVOID ctx)
    return DS_OK;
 }
 
-HRESULT WINAPI DirectSoundCaptureCreate(LPCGUID,
+dllexport HRESULT WINAPI DirectSoundCaptureCreate(LPCGUID,
       LPDIRECTSOUNDCAPTURE8*, LPUNKNOWN)
 {
    std::cerr << "DirectSoundCaptureCreate" << std::endl;
    return DSERR_ALLOCATED;
 }
 
-HRESULT WINAPI DirectSoundCaptureEnumerateA(
+dllexport HRESULT WINAPI DirectSoundCaptureEnumerateA(
       LPDSENUMCALLBACKA, LPVOID)
 {
    std::cerr << "DirectSoundCaptureEnumerateA" << std::endl;
    return DSERR_INVALIDPARAM;
 }
 
-HRESULT WINAPI DirectSoundCaptureEnumerateW(
+dllexport HRESULT WINAPI DirectSoundCaptureEnumerateW(
       LPDSENUMCALLBACKW, LPVOID)
 {
    std::cerr << "DirectSoundCaptureEnumerateW" << std::endl;
    return DSERR_INVALIDPARAM;
 }
 
+#ifdef __GNUC__
+
+// MinGW seems to be unable to export __stdcall (WINAPI) functions since their
+// signature is rather different, so we create some proxy calls and export these instead.
+// These just jmp right into the __stdcall variants.
+
+#define WINSYMBOL(symbol) "_" #symbol
+#define EXPORT_PROXY(symbol, argcnt) \
+   asm( \
+         ".text\n" \
+         ".globl " WINSYMBOL(symbol) "\n" \
+         WINSYMBOL(symbol) ":\n" \
+         "\tjmp " WINSYMBOL(symbol) "@" #argcnt "\n" \
+         ".section .drectve\n" \
+         ".ascii \" -export:\\\"" #symbol "\\\"\"\n" \
+         ".text\n" \
+      )
+
+EXPORT_PROXY(DirectSoundCreate, 12);
+EXPORT_PROXY(DirectSoundCreate8, 12);
+EXPORT_PROXY(DirectSoundCaptureCreate, 12);
+EXPORT_PROXY(DirectSoundCaptureCreate8, 12);
+EXPORT_PROXY(DirectSoundEnumerateA, 8);
+EXPORT_PROXY(DirectSoundEnumerateW, 8);
+EXPORT_PROXY(DirectSoundCaptureEnumerateA, 8);
+EXPORT_PROXY(DirectSoundCaptureEnumerateW, 8);
+EXPORT_PROXY(GetDeviceID, 8);
+EXPORT_PROXY(DirectSoundFullDuplexCreate, 40);
+
+#endif

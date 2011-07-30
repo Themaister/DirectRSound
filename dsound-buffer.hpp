@@ -49,6 +49,7 @@ class RSoundDSBuffer : public IDirectSoundBuffer
          uint8_t *data;
          unsigned size;
          unsigned ptr;
+         unsigned write_ptr;
       } ring;
       DWORD buffer_status;
 
