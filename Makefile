@@ -2,6 +2,7 @@ TARGET = dsound.dll
 
 SRCS := $(wildcard *.cpp)
 OBJS := $(SRCS:.cpp=.o)
+HEADERS := $(wildcard *.hpp) $(wildcard *.h)
 
 all: $(TARGET)
 
@@ -11,7 +12,7 @@ CXXFLAGS += -O3 -g -I. -Wall -ansi -pedantic
 
 CXX = g++
 
-%.o: %.cpp
+%.o: %.cpp $(HEADERS)
 	$(CXX) -c -o $@ $< $(CXXFLAGS)
 
 $(TARGET): $(OBJS)

@@ -4,6 +4,7 @@
 #include <dsound.h>
 #include <stdint.h>
 #include <rsound.h>
+#include <mmreg.h>
 
 class RSoundDSBuffer : public IDirectSoundBuffer
 {
@@ -34,6 +35,9 @@ class RSoundDSBuffer : public IDirectSoundBuffer
       HRESULT __stdcall Unlock(LPVOID, DWORD, LPVOID, DWORD);
       HRESULT __stdcall Restore();
 
+      ssize_t audio_cb(void *data, size_t bytes);
+      void err_cb();
+
    private:
       volatile long refcnt;
       bool is_primary;
@@ -41,10 +45,16 @@ class RSoundDSBuffer : public IDirectSoundBuffer
       rsound_t *rd;
       struct
       {
+         CRITICAL_SECTION crit;
          uint8_t *data;
          unsigned size;
          unsigned ptr;
       } ring;
+      DWORD buffer_status;
+
+      WAVEFORMATEXTENSIBLE wfx;
+
+      void set_desc(LPCDSBUFFERDESC desc);
 };
 
 #endif
