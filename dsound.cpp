@@ -121,38 +121,4 @@ dllexport HRESULT WINAPI DirectSoundCaptureEnumerateW(
    return DSERR_INVALIDPARAM;
 }
 
-#if defined(__GNUC__) && defined(EXPORT_CLEAN_SYMBOLS)
-
-// MinGW seems to be unable to export __stdcall (WINAPI) functions since their
-// signature is rather different, so we create some proxy calls and export these instead.
-// These just jmp right into the __stdcall variants.
-
-#define WINSYMBOL(symbol) "_" #symbol
-#define EXPORT_PROXY(symbol, argcnt) \
-   asm( \
-         ".text\n" \
-         ".globl " WINSYMBOL(symbol) "\n" \
-         WINSYMBOL(symbol) ":\n" \
-         "\tjmp " WINSYMBOL(symbol) "@" #argcnt "\n" \
-         ".section .drectve\n" \
-         ".ascii \" -export:\\\"" #symbol "\\\"\"\n" \
-         ".text\n" \
-      )
-
-#if DIRECTSOUND_VERSION >= 0x0800
-EXPORT_PROXY(DirectSoundCreate8, 12);
-EXPORT_PROXY(DirectSoundCaptureCreate8, 12);
-EXPORT_PROXY(GetDeviceID, 8);
-EXPORT_PROXY(DirectSoundFullDuplexCreate, 40);
-#endif
-
-EXPORT_PROXY(DirectSoundCreate, 12);
-EXPORT_PROXY(DirectSoundCaptureCreate, 12);
-EXPORT_PROXY(DirectSoundEnumerateA, 8);
-EXPORT_PROXY(DirectSoundEnumerateW, 8);
-EXPORT_PROXY(DirectSoundCaptureEnumerateA, 8);
-EXPORT_PROXY(DirectSoundCaptureEnumerateW, 8);
-
-#endif
-
 
