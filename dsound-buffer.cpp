@@ -3,6 +3,21 @@
 #include <string.h>
 #include "log.hpp"
 
+#undef min
+#undef max
+#include <algorithm>
+#include <limits>
+
+
+#define WAVE_FORMAT_IEEE_FLOAT__ 0x0003
+
+static const GUID KSDATAFORMAT_SUBTYPE_IEEE_FLOAT__ = {
+   0x00000003,
+   0x0000,
+   0x0010,
+   { 0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71 }
+};
+
 using namespace Logging;
 
 namespace Callback
@@ -27,7 +42,7 @@ ssize_t RSoundDSBuffer::audio_cb(void *data_, size_t bytes)
 {
    uint8_t *data = static_cast<uint8_t*>(data_);
    EnterCriticalSection(&ring.crit);
-   size_t avail = min(ring.size - ring.ptr, bytes);
+   size_t avail = std::min(ring.size - ring.ptr, bytes);
 
    memcpy(data, ring.data + ring.ptr, avail);
    ring.ptr = (ring.ptr + avail) % ring.size;
@@ -92,7 +107,22 @@ void RSoundDSBuffer::set_desc(LPCDSBUFFERDESC desc)
 
    int rate = desc->lpwfxFormat->nSamplesPerSec;
    int channels = desc->lpwfxFormat->nChannels;
-   int format = desc->lpwfxFormat->wBitsPerSample == 16 ? RSD_S16_LE : RSD_U8;
+   int format;
+   switch (desc->lpwfxFormat->wBitsPerSample)
+   {
+      case 8:
+         format = RSD_U8;
+         break;
+      case 16:
+         format = RSD_S16_LE;
+         break;
+      case 32:
+         format = RSD_S32_LE;
+         break;
+
+      default:
+         format = RSD_S16_LE;
+   }
 
    rsd_set_param(rd, RSD_SAMPLERATE, &rate);
    rsd_set_param(rd, RSD_CHANNELS, &channels);
@@ -100,12 +130,23 @@ void RSoundDSBuffer::set_desc(LPCDSBUFFERDESC desc)
    int latency_ms = find_latency();
    rsd_set_param(rd, RSD_LATENCY, &latency_ms);
 
+   is_float = false;
+   if (desc->lpwfxFormat->wFormatTag == WAVE_FORMAT_EXTENSIBLE)
+   {
+      WAVEFORMATEXTENSIBLE *ext = (WAVEFORMATEXTENSIBLE*)desc->lpwfxFormat;
+      if (ext->SubFormat == KSDATAFORMAT_SUBTYPE_IEEE_FLOAT__)
+         is_float = true;
+   }
+   else if (desc->lpwfxFormat->wFormatTag == WAVE_FORMAT_IEEE_FLOAT__)
+      is_float = true;
+
    Log("=============================");
    Log("Buffer info:");
    Log("\tSamplerate: %d", rate);
    Log("\tChannels: %d", channels);
    Log("\tBits: %d", desc->lpwfxFormat->wBitsPerSample);
    Log("\tBuffer size: %d bytes", desc->dwBufferBytes);
+   Log("\tIEEE float: %s", is_float ? "true" : "false");
    Log("=============================");
 
    latency = (latency_ms * rate * channels * desc->lpwfxFormat->wBitsPerSample) / (8 * 1000);
@@ -225,7 +266,7 @@ HRESULT __stdcall RSoundDSBuffer::GetFormat(LPWAVEFORMATEX fmt,
       LPDWORD pdwSizeWritten)
 {
    Log("RSoundDSBuffer::GetFormat");
-   unsigned size = min(dwSizeAllocated, sizeof(wfx));
+   unsigned size = std::min((size_t)dwSizeAllocated, sizeof(wfx));
    memcpy(fmt, &wfx, size);
    *pdwSizeWritten = size;
    return DS_OK;
@@ -247,7 +288,7 @@ HRESULT RSoundDSBuffer::Initialize(LPDIRECTSOUND, LPCDSBUFFERDESC)
 HRESULT RSoundDSBuffer::SetFormat(LPCWAVEFORMATEX fmt)
 {
    Log("RSoundDSBuffer::SetFormat");
-   memcpy(&wfx, fmt, min(fmt->cbSize, sizeof(wfx)));
+   memcpy(&wfx, fmt, std::min((size_t)fmt->cbSize + sizeof(WAVEFORMATEX), sizeof(wfx)));
    // Should perhaps update settings?
    return DS_OK;
 }
@@ -299,7 +340,7 @@ HRESULT RSoundDSBuffer::Lock(
       return DS_OK;
    }
 
-   size_t avail = min(ring.size - offset, bytes);
+   size_t avail = std::min(ring.size - offset, bytes);
 
    if (ptr1)
    {
@@ -355,7 +396,20 @@ unsigned RSoundDSBuffer::ring_distance(unsigned read_ptr, unsigned write_ptr, un
       return write_ptr - read_ptr;
 }
 
-HRESULT RSoundDSBuffer::Unlock(LPVOID, DWORD bytes1, LPVOID, DWORD bytes2)
+void RSoundDSBuffer::convert_float_to_s32(int32_t *out, const float *in, unsigned samples)
+{
+   for (unsigned i = 0; i < samples; i++)
+   {
+      float val = in[i];
+      if (val > 1.0f)
+         val = 1.0f;
+      else if (val < -1.0f)
+         val = -1.0f;
+      out[i] = static_cast<int32_t>(val * static_cast<float>(std::numeric_limits<int32_t>::max()));
+   }
+}
+
+HRESULT RSoundDSBuffer::Unlock(LPVOID ptr1, DWORD bytes1, LPVOID ptr2, DWORD bytes2)
 {
    Log("RSoundDSBuffer::Unlock: bytes1 = %d, bytes2 = %d", bytes1, bytes2);
    if (bytes2)
@@ -367,6 +421,17 @@ HRESULT RSoundDSBuffer::Unlock(LPVOID, DWORD bytes1, LPVOID, DWORD bytes2)
    unsigned distance = ring_distance(ring.ptr, ring.write_ptr, ring.size);
    if (distance < ring.size / 2)
       ring.write_ptr = (ring.ptr + ring.size / 2) % ring.size;
+
+   if (is_float)
+   {
+      if (ptr1 && bytes1)
+         convert_float_to_s32(reinterpret_cast<int32_t*>(ptr1), reinterpret_cast<float*>(ptr1),
+               bytes1 / sizeof(float));
+      if (ptr2 && bytes2)
+         convert_float_to_s32(reinterpret_cast<int32_t*>(ptr2), reinterpret_cast<float*>(ptr2),
+               bytes2 / sizeof(float));
+   }
+
    LeaveCriticalSection(&ring.crit);
 
    return DS_OK;

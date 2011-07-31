@@ -62,6 +62,9 @@ class RSoundDSBuffer : public IDirectSoundBuffer
       unsigned latency;
       unsigned adjusted_latency(unsigned ptr);
       static unsigned find_latency();
+
+      bool is_float;
+      static void convert_float_to_s32(int32_t *out, const float *in, unsigned samples);
 };
 
 #endif
