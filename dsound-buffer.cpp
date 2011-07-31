@@ -11,8 +11,9 @@
 #include <limits>
 
 
+// These aren't defined in default mmreg.h/ksdata.h whatever in MinGW, just
+// hardcode these. It's not like they're going away :D
 #define WAVE_FORMAT_IEEE_FLOAT__ 0x0003
-
 static const GUID KSDATAFORMAT_SUBTYPE_IEEE_FLOAT__ = {
    0x00000003,
    0x0000,
@@ -147,7 +148,7 @@ void RSoundDSBuffer::set_format(LPWAVEFORMATEX fmt)
          format = RSD_U8;
          break;
       case 16:
-         format = RSD_S16_LE;
+         format = RSD_S16_LE; // WAV format demands little-endian (TODO: Verify).
          break;
       case 32:
          format = RSD_S32_LE;
@@ -187,7 +188,8 @@ void RSoundDSBuffer::set_format(LPWAVEFORMATEX fmt)
 
    latency = (latency_ms * rate * channels * fmt->wBitsPerSample) / (8 * 1000);
 
-   // To compensate for added latency in rsound itself we adjust the read pointer to reflect this. Only do this when the total latency is big enough (video playing usually).
+   // To compensate for added latency in RSound itself we adjust the read pointer to reflect this.
+   // Only do this when the total latency is big enough (video playing usually).
    adjust_latency = 4 * latency < ring.size;
    Log(adjust_latency ?
          "Using latency compensation!" :
@@ -312,7 +314,7 @@ HRESULT __stdcall RSoundDSBuffer::GetCaps(LPDSBCAPS caps)
 {
    Log("RSoundDSBuffer::GetCaps");
    caps->dwFlags =
-      DSBCAPS_CTRLFREQUENCY | DSBCAPS_GETCURRENTPOSITION2 |
+      DSBCAPS_GETCURRENTPOSITION2 |
       DSBCAPS_CTRLVOLUME |
       DSBCAPS_LOCSOFTWARE | (is_primary ? DSBCAPS_PRIMARYBUFFER : 0);
 
@@ -509,7 +511,11 @@ HRESULT RSoundDSBuffer::SetCurrentPosition(DWORD pos)
    else
    {
       EnterCriticalSection(&ring.crit);
-      ring.ptr = pos;
+      if (adjust_latency)
+         ring.ptr = (pos + latency) % ring.size;
+      else
+         ring.ptr = pos;
+
       ring.write_ptr = (ring.ptr + ring.size / 2) % ring.size;
       LeaveCriticalSection(&ring.crit);
       return DS_OK;
