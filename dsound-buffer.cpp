@@ -97,7 +97,7 @@ ssize_t RSoundDSBuffer::audio_cb(void *data_, size_t bytes)
 
    LeaveCriticalSection(&ring.crit);
 
-   // Not correct.
+   // Not quite correct but good enough for now.
    if (!(buffer_status & DSBSTATUS_LOOPING))
       Stop();
 
@@ -187,6 +187,8 @@ void RSoundDSBuffer::set_format(LPWAVEFORMATEX fmt)
    Log("=============================");
 
    latency = (latency_ms * rate * channels * fmt->wBitsPerSample) / (8 * 1000);
+   // Align latency offset to whole frames.
+   latency = (latency / (channels * fmt->wBitsPerSample / 8)) * (channels * fmt->wBitsPerSample / 8);
 
    // To compensate for added latency in RSound itself we adjust the read pointer to reflect this.
    // Only do this when the total latency is big enough (video playing usually).
@@ -427,12 +429,12 @@ HRESULT RSoundDSBuffer::Play(DWORD, DWORD, DWORD flags)
    Log("RSoundDSBuffer::Play");
    if (rd)
    {
+      buffer_status = ((flags & DSBPLAY_LOOPING) ? DSBSTATUS_LOOPING : 0) | DSBSTATUS_PLAYING;
       if (rsd_start(rd) < 0)
       {
          buffer_status = 0;
          return DSERR_BUFFERLOST;
       }
-      buffer_status = ((flags & DSBPLAY_LOOPING) ? DSBSTATUS_LOOPING : 0) | DSBSTATUS_PLAYING;
    }
    return DS_OK;
 }
