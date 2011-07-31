@@ -40,10 +40,10 @@ dllexport HRESULT WINAPI DirectSoundFullDuplexCreate(
 }
 
 dllexport HRESULT WINAPI DirectSoundCaptureCreate8(LPCGUID,
-      LPDIRECTSOUNDCAPTURE8* ptr, LPUNKNOWN)
+      LPDIRECTSOUNDCAPTURE8 *ptr, LPUNKNOWN)
 {
    Logging::Init();
-   *ptr = 0;
+   *ptr = (LPDIRECTSOUNDCAPTURE8)0xDEADBEEF;
    Log("DirectSoundCaptureCreate8");
    return DSERR_ALLOCATED;
 }
@@ -98,9 +98,10 @@ dllexport HRESULT WINAPI DirectSoundEnumerateW(LPDSENUMCALLBACKW cb, LPVOID ctx)
 }
 
 dllexport HRESULT WINAPI DirectSoundCaptureCreate(LPCGUID,
-      LPDIRECTSOUNDCAPTURE8*, LPUNKNOWN)
+      LPDIRECTSOUNDCAPTURE *ptr, LPUNKNOWN)
 {
    Logging::Init();
+   *ptr = (LPDIRECTSOUNDCAPTURE)0xDEADBEEF;
    Log("DirectSoundCaptureCreate");
    return DSERR_ALLOCATED;
 }
@@ -120,5 +121,4 @@ dllexport HRESULT WINAPI DirectSoundCaptureEnumerateW(
    Log("DirectSoundCaptureEnumerateW");
    return DSERR_INVALIDPARAM;
 }
-
 
