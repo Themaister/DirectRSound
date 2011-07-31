@@ -1,48 +1,47 @@
 EXPORTS
-	DirectSoundCreate = DirectSoundCreate@12 @1
-	DirectSoundEnumerateA = DirectSoundEnumerateA@8 @2
-	DirectSoundEnumerateW = DirectSoundEnumerateW@8 @3
-	DllCanUnloadNow = DllCanUnloadNow@0 @4
-	DllGetClassObject = DllGetClassObject@12 @5
-	DirectSoundCaptureCreate = DirectSoundCaptureCreate@12 @6
-	DirectSoundCaptureEnumerateA = DirectSoundCaptureEnumerateA@8 @7
-    DirectSoundCaptureEnumerateW = DirectSoundCaptureEnumerateW@8 @8
-	GetDeviceID = GetDeviceID@8 @9
-	DirectSoundFullDuplexCreate = DirectSoundFullDuplexCreate@40 @10
-	DirectSoundCreate8 = DirectSoundCreate8@12 @11
-	DirectSoundCaptureCreate8 = DirectSoundCaptureCreate8@12 @12
+   DirectSoundCreate = DirectSoundCreate@12 @1
+   DirectSoundEnumerateA = DirectSoundEnumerateA@8 @2
+   DirectSoundEnumerateW = DirectSoundEnumerateW@8 @3
+   DllCanUnloadNow = DllCanUnloadNow@0 @4
+   DllGetClassObject = DllGetClassObject@12 @5
+   DirectSoundCaptureCreate = DirectSoundCaptureCreate@12 @6
+   DirectSoundCaptureEnumerateA = DirectSoundCaptureEnumerateA@8 @7
+   DirectSoundCaptureEnumerateW = DirectSoundCaptureEnumerateW@8 @8
+   GetDeviceID = GetDeviceID@8 @9
+   DirectSoundFullDuplexCreate = DirectSoundFullDuplexCreate@40 @10
+   DirectSoundCreate8 = DirectSoundCreate8@12 @11
+   DirectSoundCaptureCreate8 = DirectSoundCaptureCreate8@12 @12
 
-    DirectSoundCaptureCreate8@12 @13
-    DirectSoundCaptureCreate@12 @14
-    DirectSoundCaptureEnumerateA@8 @15
-    DirectSoundCaptureEnumerateW@8 @16
-    DirectSoundCreate8@12 @17
-    DirectSoundCreate@12 @18
-    DirectSoundEnumerateA@8 @19
-    DirectSoundEnumerateW@8 @20
-    DirectSoundFullDuplexCreate@40 @21
-    DllCanUnloadNow@0 @22
-    DllGetClassObject@12 @23
-    GetDeviceID@8 @24
+   DirectSoundCaptureCreate8@12 @13
+   DirectSoundCaptureCreate@12 @14
+   DirectSoundCaptureEnumerateA@8 @15
+   DirectSoundCaptureEnumerateW@8 @16
+   DirectSoundCreate8@12 @17
+   DirectSoundCreate@12 @18
+   DirectSoundEnumerateA@8 @19
+   DirectSoundEnumerateW@8 @20
+   DirectSoundFullDuplexCreate@40 @21
+   DllCanUnloadNow@0 @22
+   DllGetClassObject@12 @23
+   GetDeviceID@8 @24
 
 IMPORTS
-
-    rsound.dll.rsd_callback_lock
-    rsound.dll.rsd_callback_unlock
-    rsound.dll.rsd_delay
-    rsound.dll.rsd_delay_ms
-    rsound.dll.rsd_delay_wait
-    rsound.dll.rsd_exec
-    rsound.dll.rsd_free
-    rsound.dll.rsd_get_avail
-    rsound.dll.rsd_init
-    rsound.dll.rsd_pause
-    rsound.dll.rsd_pointer
-    rsound.dll.rsd_samplesize
-    rsound.dll.rsd_set_callback
-    rsound.dll.rsd_set_event_callback
-    rsound.dll.rsd_set_param
-    rsound.dll.rsd_simple_start
-    rsound.dll.rsd_start
-    rsound.dll.rsd_stop
-    rsound.dll.rsd_write
+   rsound.dll.rsd_callback_lock
+   rsound.dll.rsd_callback_unlock
+   rsound.dll.rsd_delay
+   rsound.dll.rsd_delay_ms
+   rsound.dll.rsd_delay_wait
+   rsound.dll.rsd_exec
+   rsound.dll.rsd_free
+   rsound.dll.rsd_get_avail
+   rsound.dll.rsd_init
+   rsound.dll.rsd_pause
+   rsound.dll.rsd_pointer
+   rsound.dll.rsd_samplesize
+   rsound.dll.rsd_set_callback
+   rsound.dll.rsd_set_event_callback
+   rsound.dll.rsd_set_param
+   rsound.dll.rsd_simple_start
+   rsound.dll.rsd_start
+   rsound.dll.rsd_stop
+rsound.dll.rsd_write
