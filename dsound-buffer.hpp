@@ -65,6 +65,11 @@ class RSoundDSBuffer : public IDirectSoundBuffer
 
       bool is_float;
       static void convert_float_to_s32(int32_t *out, const float *in, unsigned samples);
+
+      LONG dsb_volume;
+      float gain_volume;
+      void apply_volume(void *out, const uint8_t *data, size_t size);
+      static float dsbvol_to_gain(LONG db);
 };
 
 #endif

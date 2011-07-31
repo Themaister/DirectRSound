@@ -1,7 +1,9 @@
 #include "dsound-buffer.hpp"
 #include <rsound.h>
+#include <math.h>
 #include <string.h>
 #include "log.hpp"
+#include "convert.hpp"
 
 #undef min
 #undef max
@@ -38,17 +40,58 @@ namespace Callback
    }
 }
 
+float RSoundDSBuffer::dsbvol_to_gain(LONG db)
+{
+   return powf(10.0f, db * 0.01f / 20.0f);
+}
+
+void RSoundDSBuffer::apply_volume(void *out, const uint8_t *data, size_t size)
+{
+   if (dsb_volume == DSBVOLUME_MAX)
+   {
+      memcpy(out, data, size);
+      return;
+   }
+
+   switch (wfx.Format.wBitsPerSample)
+   {
+      case 8:
+         Convert::apply_volume(
+               reinterpret_cast<uint8_t*>(out),
+               data,
+               size / sizeof(uint8_t), gain_volume);
+         break;
+
+      case 16:
+         Convert::apply_volume(
+               reinterpret_cast<int16_t*>(out),
+               reinterpret_cast<const int16_t*>(data),
+               size / sizeof(int16_t), gain_volume);
+         break;
+
+      case 32:
+         Convert::apply_volume(
+               reinterpret_cast<int32_t*>(out),
+               reinterpret_cast<const int32_t*>(data),
+               size / sizeof(int32_t), gain_volume);
+         break;
+
+      default:
+         memcpy(out, data, size);
+   }
+}
+
 ssize_t RSoundDSBuffer::audio_cb(void *data_, size_t bytes)
 {
    uint8_t *data = static_cast<uint8_t*>(data_);
    EnterCriticalSection(&ring.crit);
    size_t avail = std::min(ring.size - ring.ptr, bytes);
 
-   memcpy(data, ring.data + ring.ptr, avail);
+   apply_volume(data, ring.data + ring.ptr, avail);
    ring.ptr = (ring.ptr + avail) % ring.size;
    data += avail;
 
-   memcpy(data, ring.data + ring.ptr, bytes - avail);
+   apply_volume(data, ring.data + ring.ptr, bytes - avail);
    ring.ptr += bytes - avail;
 
    LeaveCriticalSection(&ring.crit);
@@ -65,7 +108,7 @@ void RSoundDSBuffer::err_cb()
    buffer_status = DSBSTATUS_BUFFERLOST;
 }
 
-RSoundDSBuffer::RSoundDSBuffer(LPCDSBUFFERDESC desc) : refcnt(0), is_primary(false), rd(0), buffer_status(0)
+RSoundDSBuffer::RSoundDSBuffer(LPCDSBUFFERDESC desc) : refcnt(0), is_primary(false), rd(0), buffer_status(0), dsb_volume(DSBVOLUME_MAX), gain_volume(1.0f)
 {
    Log("RSoundDSBuffer constructor");
    if (desc->dwFlags & DSBCAPS_PRIMARYBUFFER)
@@ -156,6 +199,8 @@ void RSoundDSBuffer::set_desc(LPCDSBUFFERDESC desc)
    Log(adjust_latency ?
          "Using latency compensation!" :
          "Not using latency compensation!");
+
+   SetFormat(desc->lpwfxFormat);
 }
 
 unsigned RSoundDSBuffer::adjusted_latency(unsigned ptr)
@@ -225,7 +270,9 @@ HRESULT __stdcall RSoundDSBuffer::GetPan(LPLONG pan)
 HRESULT __stdcall RSoundDSBuffer::GetVolume(LPLONG vol)
 {
    Log("RSoundDSBuffer::GetVolume");
-   *vol = DSBVOLUME_MAX;
+   EnterCriticalSection(&ring.crit);
+   *vol = dsb_volume;
+   LeaveCriticalSection(&ring.crit);
    return DS_OK;
 }
 
@@ -242,9 +289,15 @@ HRESULT __stdcall RSoundDSBuffer::SetPan(LONG)
    return DS_OK;
 }
 
-HRESULT __stdcall RSoundDSBuffer::SetVolume(LONG)
+HRESULT __stdcall RSoundDSBuffer::SetVolume(LONG vol)
 {
    Log("RSoundDSBuffer::SetVolume");
+   EnterCriticalSection(&ring.crit);
+   dsb_volume = vol;
+   gain_volume = dsbvol_to_gain(dsb_volume);
+   LeaveCriticalSection(&ring.crit);
+
+   Log("Setting volume to %.1f dB, Gain: %.3f", vol / 100.0f, gain_volume);
    return DS_OK;
 }
 
@@ -253,6 +306,7 @@ HRESULT __stdcall RSoundDSBuffer::GetCaps(LPDSBCAPS caps)
    Log("RSoundDSBuffer::GetCaps");
    caps->dwFlags =
       DSBCAPS_CTRLFREQUENCY | DSBCAPS_GETCURRENTPOSITION2 |
+      DSBCAPS_CTRLVOLUME |
       DSBCAPS_LOCSOFTWARE | (is_primary ? DSBCAPS_PRIMARYBUFFER : 0);
 
    caps->dwBufferBytes = ring.size;
