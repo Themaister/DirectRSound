@@ -136,22 +136,12 @@ unsigned RSoundDSBuffer::find_latency()
    return latency_ms;
 }
 
-void RSoundDSBuffer::set_desc(LPCDSBUFFERDESC desc)
+void RSoundDSBuffer::set_format(LPWAVEFORMATEX fmt)
 {
-   if (ring.data)
-      delete[] ring.data;
-
-   ring.data = new uint8_t[desc->dwBufferBytes];
-   ring.size = desc->dwBufferBytes;
-   memset(ring.data, 0, ring.size);
-
-   ring.ptr = 0;
-   ring.write_ptr = desc->dwBufferBytes >> 1;
-
-   int rate = desc->lpwfxFormat->nSamplesPerSec;
-   int channels = desc->lpwfxFormat->nChannels;
+   int rate = fmt->nSamplesPerSec;
+   int channels = fmt->nChannels;
    int format;
-   switch (desc->lpwfxFormat->wBitsPerSample)
+   switch (fmt->wBitsPerSample)
    {
       case 8:
          format = RSD_U8;
@@ -165,42 +155,59 @@ void RSoundDSBuffer::set_desc(LPCDSBUFFERDESC desc)
 
       default:
          format = RSD_S16_LE;
+         fmt->wBitsPerSample = 16;
    }
 
-   rsd_set_param(rd, RSD_SAMPLERATE, &rate);
-   rsd_set_param(rd, RSD_CHANNELS, &channels);
-   rsd_set_param(rd, RSD_FORMAT, &format);
    int latency_ms = find_latency();
-   rsd_set_param(rd, RSD_LATENCY, &latency_ms);
+   if (rd)
+   {
+      rsd_set_param(rd, RSD_SAMPLERATE, &rate);
+      rsd_set_param(rd, RSD_CHANNELS, &channels);
+      rsd_set_param(rd, RSD_FORMAT, &format);
+      rsd_set_param(rd, RSD_LATENCY, &latency_ms);
+   }
 
    is_float = false;
-   if (desc->lpwfxFormat->wFormatTag == WAVE_FORMAT_EXTENSIBLE)
+   if (fmt->wFormatTag == WAVE_FORMAT_EXTENSIBLE)
    {
-      WAVEFORMATEXTENSIBLE *ext = (WAVEFORMATEXTENSIBLE*)desc->lpwfxFormat;
+      WAVEFORMATEXTENSIBLE *ext = (WAVEFORMATEXTENSIBLE*)fmt;
       if (ext->SubFormat == KSDATAFORMAT_SUBTYPE_IEEE_FLOAT__)
          is_float = true;
    }
-   else if (desc->lpwfxFormat->wFormatTag == WAVE_FORMAT_IEEE_FLOAT__)
+   else if (fmt->wFormatTag == WAVE_FORMAT_IEEE_FLOAT__)
       is_float = true;
 
    Log("=============================");
    Log("Buffer info:");
    Log("\tSamplerate: %d", rate);
    Log("\tChannels: %d", channels);
-   Log("\tBits: %d", desc->lpwfxFormat->wBitsPerSample);
-   Log("\tBuffer size: %d bytes", desc->dwBufferBytes);
+   Log("\tBits: %d", fmt->wBitsPerSample);
    Log("\tIEEE float: %s", is_float ? "true" : "false");
    Log("=============================");
 
-   latency = (latency_ms * rate * channels * desc->lpwfxFormat->wBitsPerSample) / (8 * 1000);
+   latency = (latency_ms * rate * channels * fmt->wBitsPerSample) / (8 * 1000);
 
    // To compensate for added latency in rsound itself we adjust the read pointer to reflect this. Only do this when the total latency is big enough (video playing usually).
    adjust_latency = 4 * latency < ring.size;
    Log(adjust_latency ?
          "Using latency compensation!" :
          "Not using latency compensation!");
+}
 
-   SetFormat(desc->lpwfxFormat);
+void RSoundDSBuffer::set_desc(LPCDSBUFFERDESC desc)
+{
+   if (ring.data)
+      delete[] ring.data;
+
+   ring.data = new uint8_t[desc->dwBufferBytes];
+   ring.size = desc->dwBufferBytes;
+   memset(ring.data, 0, ring.size);
+
+   ring.ptr = 0;
+   ring.write_ptr = desc->dwBufferBytes >> 1;
+   
+   if (desc->lpwfxFormat)
+      SetFormat(desc->lpwfxFormat);
 }
 
 unsigned RSoundDSBuffer::adjusted_latency(unsigned ptr)
@@ -322,7 +329,10 @@ HRESULT __stdcall RSoundDSBuffer::GetFormat(LPWAVEFORMATEX fmt,
    Log("RSoundDSBuffer::GetFormat");
    unsigned size = std::min((size_t)dwSizeAllocated, sizeof(wfx));
    memcpy(fmt, &wfx, size);
-   *pdwSizeWritten = size;
+
+   if (pdwSizeWritten)
+      *pdwSizeWritten = size;
+
    return DS_OK;
 }
 
@@ -343,7 +353,7 @@ HRESULT RSoundDSBuffer::SetFormat(LPCWAVEFORMATEX fmt)
 {
    Log("RSoundDSBuffer::SetFormat");
    memcpy(&wfx, fmt, std::min((size_t)fmt->cbSize + sizeof(WAVEFORMATEX), sizeof(wfx)));
-   // Should perhaps update settings?
+   set_format((LPWAVEFORMATEX)&wfx);
    return DS_OK;
 }
 

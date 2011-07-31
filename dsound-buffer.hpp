@@ -55,6 +55,7 @@ class RSoundDSBuffer : public IDirectSoundBuffer
       WAVEFORMATEXTENSIBLE wfx;
 
       void set_desc(LPCDSBUFFERDESC desc);
+      void set_format(LPWAVEFORMATEX fmt);
       void destruct();
       unsigned ring_distance(unsigned read_ptr, unsigned write_ptr, unsigned ring_size);
 
