@@ -89,7 +89,10 @@ dllexport HRESULT WINAPI DirectSoundEnumerateA(LPDSENUMCALLBACKA cb, LPVOID ctx)
    Logging::Init();
    Log("DirectSoundEnumerateA");
    if (cb)
-      cb(0, "RSound networked audio", "RSound", ctx);
+   {
+      GUID tmp = DSOUND_RSOUND_GUID;
+      cb(&tmp, "RSound networked audio", "RSound", ctx);
+   }
    return DS_OK;
 }
 
@@ -98,7 +101,10 @@ dllexport HRESULT WINAPI DirectSoundEnumerateW(LPDSENUMCALLBACKW cb, LPVOID ctx)
    Logging::Init();
    Log("DirectSoundEnumerateW");
    if (cb)
-      cb(0, L"RSound networked audio", L"RSound", ctx);
+   {
+      GUID tmp = DSOUND_RSOUND_GUID;
+      cb(&tmp, L"RSound networked audio", L"RSound", ctx);
+   }
    return DS_OK;
 }
 
@@ -131,3 +137,53 @@ dllexport HRESULT WINAPI DirectSoundCaptureEnumerateW(
    return DSERR_INVALIDPARAM;
 }
 
+dllexport HRESULT WINAPI DllCanUnloadNow(void)
+{
+   Log("DllCanUnloadNow");
+   return FALSE;
+}
+
+// TODO: Fixup ...
+dllexport HRESULT WINAPI DllGetClassObject(REFCLSID, REFIID, LPVOID *)
+{
+   Log("DllGetClassObject");
+   return CLASS_E_CLASSNOTAVAILABLE;
+}
+
+#if defined(__GNUC__) && defined(EXPORT_PROXY_SYMBOLS)
+
+// Apparently we need to export the DirectSound functions in a proper order since some
+// programs import by ordinal. We have to match the original binary.
+// MinGW orders alphabethically so make sure these hook calls will come first.
+
+#define WINSYMBOL(symbol) "_" #symbol
+#define HOOKSYMBOL(index) "AAAAAHookCall" #index
+#define HOOKSYMBOL_(index) "_" HOOKSYMBOL(index)
+#define EXPORT_PROXY(index, target) \
+   asm( \
+         ".text\n" \
+         ".globl " HOOKSYMBOL_(index) "\n" \
+         HOOKSYMBOL_(index)  ":\n" \
+         "\tjmp " WINSYMBOL(target) "\n" \
+         ".section .drectve\n" \
+         ".ascii \" -export:\\\"" HOOKSYMBOL(index) "\\\"\"\n" \
+         ".text\n" \
+   )
+
+EXPORT_PROXY(00, DirectSoundCreate);
+EXPORT_PROXY(01, DirectSoundEnumerateA);
+EXPORT_PROXY(02, DirectSoundEnumerateW);
+EXPORT_PROXY(03, DllCanUnloadNow);
+EXPORT_PROXY(04, DllGetClassObject);
+EXPORT_PROXY(05, DirectSoundCaptureCreate);
+EXPORT_PROXY(06, DirectSoundCaptureEnumerateA);
+EXPORT_PROXY(07, DirectSoundCaptureEnumerateW);
+
+#if DIRECTSOUND_VERSION >= 0x0800
+EXPORT_PROXY(08, GetDeviceID);
+EXPORT_PROXY(09, DirectSoundFullDuplexCreate);
+EXPORT_PROXY(10, DirectSoundCreate8);
+EXPORT_PROXY(11, DirectSoundCaptureCreate8);
+#endif
+
+#endif
