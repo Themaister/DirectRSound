@@ -44,4 +44,4 @@ IMPORTS
    rsound.dll.rsd_simple_start
    rsound.dll.rsd_start
    rsound.dll.rsd_stop
-rsound.dll.rsd_write
+   rsound.dll.rsd_write
