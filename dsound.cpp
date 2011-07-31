@@ -1,6 +1,7 @@
 #include <dsound.h>
 #include "dsound-rsd.hpp"
 #include "log.hpp"
+#include "dummy-capture.hpp"
 
 using namespace Logging;
 
@@ -43,9 +44,13 @@ dllexport HRESULT WINAPI DirectSoundCaptureCreate8(LPCGUID,
       LPDIRECTSOUNDCAPTURE8 *ptr, LPUNKNOWN)
 {
    Logging::Init();
-   *ptr = (LPDIRECTSOUNDCAPTURE8)0xDEADBEEF;
+
+   DummyCapture *cap = new DummyCapture;
+   cap->AddRef();
+   *ptr = cap;
+
    Log("DirectSoundCaptureCreate8");
-   return DSERR_ALLOCATED;
+   return DS_OK;
 }
 
 dllexport HRESULT WINAPI GetDeviceID(LPCGUID pGuidSrc, LPGUID pGuidDest)
@@ -101,9 +106,13 @@ dllexport HRESULT WINAPI DirectSoundCaptureCreate(LPCGUID,
       LPDIRECTSOUNDCAPTURE *ptr, LPUNKNOWN)
 {
    Logging::Init();
-   *ptr = (LPDIRECTSOUNDCAPTURE)0xDEADBEEF;
+
+   DummyCapture *cap = new DummyCapture;
+   cap->AddRef();
+   *ptr = cap;
+
    Log("DirectSoundCaptureCreate");
-   return DSERR_ALLOCATED;
+   return DS_OK;
 }
 
 dllexport HRESULT WINAPI DirectSoundCaptureEnumerateA(
