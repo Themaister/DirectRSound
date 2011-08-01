@@ -274,9 +274,22 @@ ULONG __stdcall RSoundDSBuffer::AddRef()
    return refcnt;
 }
 
-HRESULT __stdcall RSoundDSBuffer::QueryInterface(REFIID, void**)
+HRESULT __stdcall RSoundDSBuffer::QueryInterface(REFIID id, LPVOID *ptr)
 {
    Log("RSoundDSBuffer::QueryInterface");
+   Log("IID: {%lx, %hx, %hx, { %x, %x, %x, %x, %x, %x, %x, %x } }",
+         id.Data1, id.Data2, id.Data3,
+         id.Data4[0], id.Data4[1], id.Data4[2], id.Data4[3],
+         id.Data4[4], id.Data4[5], id.Data4[6], id.Data4[7]);
+
+   if (id == IID_IDirectSoundBuffer8 ||
+         id == IID_IDirectSoundBuffer)
+   {
+      *ptr = this;
+      AddRef();
+      return DS_OK;
+   }
+
    return DSERR_UNSUPPORTED;
 }
 
