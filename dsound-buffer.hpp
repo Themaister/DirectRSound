@@ -64,7 +64,7 @@ class RSoundDSBuffer : public IDirectSoundBuffer
          uint8_t *data;
          unsigned size;
          unsigned ptr;
-         unsigned write_ptr;
+         unsigned align;
       } ring;
       DWORD buffer_status;
 
@@ -73,12 +73,13 @@ class RSoundDSBuffer : public IDirectSoundBuffer
       void set_desc(LPCDSBUFFERDESC desc);
       void set_format(LPWAVEFORMATEX fmt);
       void destruct();
-      unsigned ring_distance(unsigned read_ptr, unsigned write_ptr, unsigned ring_size);
 
       bool adjust_latency;
       unsigned latency;
       unsigned adjusted_latency(unsigned ptr);
       static unsigned find_latency();
+      static bool allow_latency();
+      unsigned get_write_ptr();
 
       bool is_float;
       static void convert_float_to_s32(int32_t *out, const float *in, unsigned samples);

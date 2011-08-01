@@ -153,6 +153,15 @@ unsigned RSoundDSBuffer::find_latency()
    return latency_ms;
 }
 
+bool RSoundDSBuffer::allow_latency()
+{
+   bool allow = true;
+   const char *ap = getenv("RSD_LATENCY_COMPENSATION");
+   if (ap)
+      allow = static_cast<bool>(strtoul(ap, 0, 0));
+   return allow;
+}
+
 void RSoundDSBuffer::set_format(LPWAVEFORMATEX fmt)
 {
    int rate = fmt->nSamplesPerSec;
@@ -203,12 +212,13 @@ void RSoundDSBuffer::set_format(LPWAVEFORMATEX fmt)
    Log("=============================");
 
    latency = (latency_ms * rate * channels * fmt->wBitsPerSample) / (8 * 1000);
+   ring.align = channels * fmt->wBitsPerSample / 8;
    // Align latency offset to whole frames.
-   latency = (latency / (channels * fmt->wBitsPerSample / 8)) * (channels * fmt->wBitsPerSample / 8);
+   latency = (latency / ring.align) * ring.align;
 
    // To compensate for added latency in RSound itself we adjust the read pointer to reflect this.
    // Only do this when the total latency is big enough (video playing usually).
-   adjust_latency = 4 * latency < ring.size;
+   adjust_latency = (4 * latency < ring.size) && allow_latency();
    Log(adjust_latency ?
          "Using latency compensation!" :
          "Not using latency compensation!");
@@ -224,7 +234,8 @@ void RSoundDSBuffer::set_desc(LPCDSBUFFERDESC desc)
    memset(ring.data, 0, ring.size);
 
    ring.ptr = 0;
-   ring.write_ptr = desc->dwBufferBytes >> 1;
+
+   Log("Buffer size: %u bytes", ring.size);
    
    if (desc->lpwfxFormat)
       SetFormat(desc->lpwfxFormat);
@@ -388,12 +399,21 @@ HRESULT RSoundDSBuffer::GetCurrentPosition(LPDWORD play, LPDWORD write)
          *play = ring.ptr;
    }
    if (write)
-      *write = ring.write_ptr;
+      *write = get_write_ptr();
    LeaveCriticalSection(&ring.crit);
 
-   Log("RSoundDSBuffer::GetCurrentPosition: Play = %u, Write = %u", ring.ptr, ring.write_ptr);
+   Log("RSoundDSBuffer::GetCurrentPosition: Play = %u, Write: %d", ring.ptr, write ? *write : -1);
 
    return DS_OK;
+}
+
+unsigned RSoundDSBuffer::get_write_ptr()
+{
+   EnterCriticalSection(&ring.crit);
+   unsigned offset = (ring.ptr + latency / 4) % ring.size;
+   offset = (offset / ring.align) * ring.align;
+   LeaveCriticalSection(&ring.crit);
+   return offset;
 }
 
 HRESULT RSoundDSBuffer::Lock(
@@ -405,22 +425,32 @@ HRESULT RSoundDSBuffer::Lock(
       LPDWORD bytes2,
       DWORD flags)
 {
-   Log("RSoundDSBuffer::Lock: Offset = %d, Bytes = %d, FromWrite = %d", offset, bytes, flags & DSBLOCK_FROMWRITECURSOR ? 1 : 0);
+   Log("RSoundDSBuffer::Lock: Offset = %d, Bytes = %d, FromWrite = %d, EntireBuffer = %d", offset, bytes, flags & DSBLOCK_FROMWRITECURSOR ? 1 : 0, flags & DSBLOCK_ENTIREBUFFER ? 1 : 0);
    DWORD status;
    GetStatus(&status);
    if (status & DSBSTATUS_BUFFERLOST)
       return DSERR_BUFFERLOST;
 
    if (flags & DSBLOCK_FROMWRITECURSOR)
-      offset = ring.write_ptr;
+      offset = get_write_ptr();
 
    if (bytes > ring.size || offset > ring.size)
+   {
+      Log("::Lock(): Offset is outsize buffer range!");
       return DSERR_INVALIDPARAM;
+   }
 
    if (flags & DSBLOCK_ENTIREBUFFER)
    {
-      *ptr1 = ring.data;
-      *bytes1 = ring.size;
+      if (ptr1)
+         *ptr1 = ring.data;
+      if (bytes1)
+         *bytes1 = ring.size;
+      if (ptr2)
+         *ptr2 = 0;
+      if (bytes2)
+         *bytes2 = 0;
+
       return DS_OK;
    }
 
@@ -429,13 +459,17 @@ HRESULT RSoundDSBuffer::Lock(
    if (ptr1)
    {
       *ptr1 = ring.data + offset;
-      *bytes1 = avail;
+      if (bytes1)
+         *bytes1 = avail;
       if (ptr2)
       {
          *ptr2 = avail < bytes ? ring.data : 0;
-         *bytes2 = bytes - avail;
+         if (bytes2)
+            *bytes2 = bytes - avail;
       }
    }
+
+   Log("::Lock(): Returned successfully!");
 
    return DS_OK;
 }
@@ -465,19 +499,10 @@ HRESULT RSoundDSBuffer::Stop()
    if (ring.data)
    {
       ring.ptr = 0;
-      ring.write_ptr = ring.size >> 1;
       memset(ring.data, 0, ring.size);
    }
 
    return DS_OK;
-}
-
-unsigned RSoundDSBuffer::ring_distance(unsigned read_ptr, unsigned write_ptr, unsigned ring_size)
-{
-   if (write_ptr < read_ptr)
-      return write_ptr + ring_size - read_ptr;
-   else
-      return write_ptr - read_ptr;
 }
 
 void RSoundDSBuffer::convert_float_to_s32(int32_t *out, const float *in, unsigned samples)
@@ -496,15 +521,8 @@ void RSoundDSBuffer::convert_float_to_s32(int32_t *out, const float *in, unsigne
 HRESULT RSoundDSBuffer::Unlock(LPVOID ptr1, DWORD bytes1, LPVOID ptr2, DWORD bytes2)
 {
    Log("RSoundDSBuffer::Unlock: bytes1 = %d, bytes2 = %d", bytes1, bytes2);
-   if (bytes2)
-      ring.write_ptr = bytes2;
-   else
-      ring.write_ptr = (ring.write_ptr + bytes1) % ring.size;
 
    EnterCriticalSection(&ring.crit);
-   unsigned distance = ring_distance(ring.ptr, ring.write_ptr, ring.size);
-   if (distance < ring.size / 2)
-      ring.write_ptr = (ring.ptr + ring.size / 2) % ring.size;
 
    if (is_float)
    {
@@ -534,7 +552,6 @@ HRESULT RSoundDSBuffer::SetCurrentPosition(DWORD pos)
       else
          ring.ptr = pos;
 
-      ring.write_ptr = (ring.ptr + ring.size / 2) % ring.size;
       LeaveCriticalSection(&ring.crit);
       return DS_OK;
    }
