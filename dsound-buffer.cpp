@@ -128,6 +128,7 @@ void RSoundDSBuffer::err_cb()
 RSoundDSBuffer::RSoundDSBuffer(LPCDSBUFFERDESC desc) : refcnt(0), is_primary(false), rd(0), buffer_status(0), dsb_volume(DSBVOLUME_MAX), gain_volume(1.0f)
 {
    Log("RSoundDSBuffer constructor");
+   memset(&ring, 0, sizeof(ring));
    if (desc->dwFlags & DSBCAPS_PRIMARYBUFFER)
       // We mix externally, so we really don't care about the primary.
    {
@@ -135,7 +136,6 @@ RSoundDSBuffer::RSoundDSBuffer(LPCDSBUFFERDESC desc) : refcnt(0), is_primary(fal
       return;
    }
 
-   memset(&ring, 0, sizeof(ring));
    InitializeCriticalSection(&ring.crit);
    rsd_init(&rd);
    rsd_set_callback(rd, Callback::audio_cb, Callback::err_cb, 256, this);
@@ -248,7 +248,7 @@ unsigned RSoundDSBuffer::adjusted_latency(unsigned ptr)
 
 void RSoundDSBuffer::destruct()
 {
-   Log("RSoundDSBuffer::destruct");
+   Log("RSoundDSBuffer::destruct: this: %p", this);
    if (is_primary)
       return;
 
@@ -269,8 +269,8 @@ void RSoundDSBuffer::destruct()
 
 ULONG __stdcall RSoundDSBuffer::AddRef()
 {
-   Log("RSoundDSBuffer::AddRef");
    InterlockedIncrement(&refcnt);
+   Log("RSoundDSBuffer::AddRef: %ld", refcnt);
    return refcnt;
 }
 
@@ -282,8 +282,9 @@ HRESULT __stdcall RSoundDSBuffer::QueryInterface(REFIID, void**)
 
 ULONG __stdcall RSoundDSBuffer::Release()
 {
-   Log("RSoundDSBuffer::Release");
+   Log("RSoundDSBuffer::Release: this: %p", this);
    InterlockedDecrement(&refcnt);
+   Log("RSoundDSBuffer::Release: %ld: this: %p", refcnt, this);
    if (refcnt == 0)
    {
       destruct();
@@ -479,7 +480,7 @@ HRESULT RSoundDSBuffer::Lock(
 
 HRESULT RSoundDSBuffer::Play(DWORD, DWORD, DWORD flags)
 {
-   Log("RSoundDSBuffer::Play");
+   Log("RSoundDSBuffer::Play: this: %p", this);
    if (rd)
    {
       buffer_status = ((flags & DSBPLAY_LOOPING) ? DSBSTATUS_LOOPING : 0) | DSBSTATUS_PLAYING;
@@ -496,14 +497,17 @@ HRESULT RSoundDSBuffer::Play(DWORD, DWORD, DWORD flags)
 
 HRESULT RSoundDSBuffer::Stop()
 {
-   Log("RSoundDSBuffer::Stop");
+   Log("RSoundDSBuffer::Stop (%s): this: %p", is_primary ? "primary" : "secondary", this);
    if (rd)
+   {
       rsd_stop(rd);
-   buffer_status = 0;
+      buffer_status = 0;
 
-   if (ring.data)
-      memset(ring.data, 0, ring.size);
+      if (ring.data)
+         memset(ring.data, 0, ring.size);
+   }
 
+   Log("Stopped successfully: this: %p", this);
    return DS_OK;
 }
 
