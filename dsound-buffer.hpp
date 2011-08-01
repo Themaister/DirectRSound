@@ -56,6 +56,7 @@ class RSoundDSBuffer : public IDirectSoundBuffer
    private:
       volatile long refcnt;
       bool is_primary;
+      volatile bool callback_stop;
 
       rsound_t *rd;
       struct

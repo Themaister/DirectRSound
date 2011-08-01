@@ -111,11 +111,11 @@ ssize_t RSoundDSBuffer::audio_cb(void *data_, size_t bytes)
    apply_volume(data, ring.data + ring.ptr, bytes - avail);
    ring.ptr += bytes - avail;
 
-   LeaveCriticalSection(&ring.crit);
-
    // Not quite correct but good enough for now.
-   if (!(buffer_status & DSBSTATUS_LOOPING))
+   if (!callback_stop && !(buffer_status & DSBSTATUS_LOOPING))
       Stop();
+
+   LeaveCriticalSection(&ring.crit);
 
    return bytes;
 }
@@ -254,6 +254,9 @@ void RSoundDSBuffer::destruct()
 
    if (rd)
    {
+      EnterCriticalSection(&ring.crit);
+      callback_stop = true;
+      LeaveCriticalSection(&ring.crit);
       rsd_stop(rd);
       rsd_free(rd);
    }
@@ -480,6 +483,8 @@ HRESULT RSoundDSBuffer::Play(DWORD, DWORD, DWORD flags)
    if (rd)
    {
       buffer_status = ((flags & DSBPLAY_LOOPING) ? DSBSTATUS_LOOPING : 0) | DSBSTATUS_PLAYING;
+      callback_stop = false;
+
       if (rsd_start(rd) < 0)
       {
          buffer_status = 0;
