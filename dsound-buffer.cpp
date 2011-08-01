@@ -497,10 +497,7 @@ HRESULT RSoundDSBuffer::Stop()
    buffer_status = 0;
 
    if (ring.data)
-   {
-      ring.ptr = 0;
       memset(ring.data, 0, ring.size);
-   }
 
    return DS_OK;
 }
