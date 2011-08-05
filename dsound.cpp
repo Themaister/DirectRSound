@@ -108,6 +108,7 @@ dllexport HRESULT WINAPI DirectSoundEnumerateA(LPDSENUMCALLBACKA cb, LPVOID ctx)
    {
       GUID tmp = DSOUND_RSOUND_GUID;
       cb(&tmp, "RSound networked audio", "RSound", ctx);
+      cb(NULL, "RSound networked audio", "RSound", ctx);
    }
    return DS_OK;
 }
@@ -120,6 +121,7 @@ dllexport HRESULT WINAPI DirectSoundEnumerateW(LPDSENUMCALLBACKW cb, LPVOID ctx)
    {
       GUID tmp = DSOUND_RSOUND_GUID;
       cb(&tmp, L"RSound networked audio", L"RSound", ctx);
+      cb(NULL, L"RSound networked audio", L"RSound", ctx);
    }
    return DS_OK;
 }
