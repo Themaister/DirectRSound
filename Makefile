@@ -8,11 +8,11 @@ all: $(TARGET)
 
 LIBS := -ldxguid -static-libstdc++ -static-libgcc -lrsound -L. dsound.def
 
-CXXFLAGS += -O3 -g -I. -Wall -ansi -pedantic
+CXXFLAGS += -O3 -I. -Wall -ansi -pedantic
 
 CXX = g++
 
-LDFLAGS += -Wl,--add-stdcall-alias -Wl,--enable-stdcall-fixup -lm
+LDFLAGS += -s -Wl,--kill-at -Wl,--enable-stdcall-fixup -lm
 
 %.o: %.cpp $(HEADERS)
 	$(CXX) -c -o $@ $< $(CXXFLAGS)
