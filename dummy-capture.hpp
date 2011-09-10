@@ -23,6 +23,7 @@ class DummyCapture : public IDirectSoundCapture8
 {
    public:
       DummyCapture();
+
       HRESULT __stdcall CreateCaptureBuffer(LPCDSCBUFFERDESC,
             LPDIRECTSOUNDCAPTUREBUFFER *,
             LPUNKNOWN);

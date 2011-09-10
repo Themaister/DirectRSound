@@ -102,7 +102,7 @@ ssize_t RSoundDSBuffer::audio_cb(void *data_, size_t bytes)
 {
    uint8_t *data = static_cast<uint8_t*>(data_);
    EnterCriticalSection(&ring.crit);
-   size_t avail = std::min(ring.size - ring.ptr, bytes);
+   size_t avail = std::min(static_cast<size_t>(ring.size - ring.ptr), bytes);
 
    apply_volume(data, ring.data + ring.ptr, avail);
    ring.ptr = (ring.ptr + avail) % ring.size;

@@ -8,7 +8,7 @@ all: $(TARGET)
 
 LIBS := -ldxguid -static-libstdc++ -static-libgcc -lrsound -L. dsound.def
 
-CXXFLAGS += -O3 -I. -Wall -ansi -pedantic
+CXXFLAGS += -O3 -I. -Wall -pedantic -Wno-delete-non-virtual-dtor
 
 CXX = g++
 
